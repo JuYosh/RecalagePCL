@@ -11,6 +11,7 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/search/kdtree.h>
 #include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/io/pcd_io.h>
@@ -26,6 +27,36 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
+
+
+void kppv(double X, double Y, double Z, int K, double coords[][3], pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud )
+{
+	//Création du kdtree et input du nuage
+	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+	kdtree.setInputCloud(pCloud);
+	
+	//Définition du point de recherche
+	pcl::PointXYZ searchPoint;
+	searchPoint.x = X;
+	searchPoint.y = Y;
+	searchPoint.z = Z;
+
+	//Vecteurs d'ID et Distances poru la recherche
+	std::vector<int> pointIdxNKNSearch(K);
+	std::vector<float> pointNKNSquaredDistance(K);
+	
+	//Recherche par rapport au searchPoint et remplissage du tableau en paramètre
+	if ( kdtree.nearestKSearch (searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0 )
+	{
+    		for (size_t i = 0; i < pointIdxNKNSearch.size (); ++i)
+		{				
+			coords[i][0] = pCloud->points[ pointIdxNKNSearch[i] ].x - X;
+			coords[i][1] = pCloud->points[ pointIdxNKNSearch[i] ].y - Y;
+			coords[i][2] = pCloud->points[ pointIdxNKNSearch[i] ].z - Z;
+		}	
+	}
+}
+
 
 
 
@@ -74,54 +105,16 @@ int main (int argc, char** argv)
 		viewer->spinOnce(100);
 		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
 	}
-	
-	// Visualize VTK
-	/*vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-	mapper->SetInputConnection(reader->GetOutputPort());
 
-	vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
-	actor->SetMapper(mapper);
+	/*EXEMPLE D'UTILISATION DE KPPV*/
+	int K = 2;
+	double cc[K][3];
 
-	vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
-	vtkSmartPointer<vtkRenderWindow> renderWindow = vtkSmartPointer<vtkRenderWindow>::New();
-	renderWindow->AddRenderer(renderer);
-	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-	renderWindowInteractor->SetRenderWindow(renderWindow);
+	//On passe les X, Y et Z du searchPoint, K, le tableau à remplir et le cloud
+	kppv(0, 0, 0, K, cc, cloud);
+	for(int i = 0; i < K; i++)
+		cout << "Coordonnées du vecteur X Y Z " << i << " : " << cc[i][0] << " " << cc[i][1] << " " << cc[i][2] << endl;
 
-	renderer->AddActor(actor);
-	renderer->SetBackground(.3, .6, .3); // Background color green
-
-	renderWindow->Render();
-	renderWindowInteractor->Start();*/
-	
-	
-	
-	
-	// Recherche des K plus proches voisins d'un point (au hasard pour l'instant)
-	//pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-	
-	//kdtree.setInputCloud(cloud);
-	/*pcl::PointXYZ searchPoint;
-	int K = 10;
-	
-	searchPoint.x = 1024.0f * rand() / (RAND_MAX + 1.0f);
-	searchPoint.y = 1024.0f * rand() / (RAND_MAX + 1.0f);
-	searchPoint.z = 1024.0f * rand() / (RAND_MAX + 1.0f);
-	
-	std::vector<int> pointIdxNKNSearch(K);
-	std::vector<float> pointNKNSquaredDistance(K);
-	
-	cout << "K plus proches voisins de (" << searchPoint.x << ", "
-		 << searchPoint.y << ", " << searchPoint.z << ") avec K = "
-		 << K << endl;*/
-	/*
-	if(kdtree.nearestKSearch(serchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0)
-	{
-		for(size_t i = 0 ; i < pointIdxNKNSearch.size() ; i++)
-		{*/
-			//cout << cloud.points[0].x << endl;
-		//}
-	//}
 
 	return EXIT_SUCCESS;
 }
