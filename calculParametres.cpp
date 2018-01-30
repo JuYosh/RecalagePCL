@@ -17,8 +17,11 @@
 # include <cmath>
 # include <ctime>
 # include <cstring>
+#include <math.h>
 
-
+#include <functional>   // std::minus
+//#include <numeric>      // std::accumulate
+//#include <algorithm>    // std::min_element, std::max_element
 
 # include "jacobi_eigenvalue.hpp"
 # include "jacobi_eigenvalue.cpp"
@@ -32,19 +35,20 @@
 #include <boost/thread/thread.hpp>
 #include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
-#include <pcl/io/pcd_io.h>
-//permet la lecture de fichiers au format .ply
-#include <pcl/io/ply_io.h>
-#include <pcl/visualization/pcl_visualizer.h>
+
 #include <pcl/console/parse.h>
 
 using namespace std;
 
-// double[] vecteurs est le tableau des distances entre le point considéré et ses voisins, k est le nombre de voisins
-void calculParametre( double vecteurs [][3] , int k )
+// double vecteurs[][3] est le tableau des distances vectorielles entre le point considéré et ses voisins, k est le nombre de voisins
+// double tabNormal [][3] est le tableau des normales de chaqu'une des points du nuage, a remplir à la case [indiceTab]
+//  double tabTau [] est le tableau des valeurs de tau de chaqu'une des points du nuage, a remplir à la case [indiceTab]
+void calculParametre( double vecteurs [][3] , int k , double** tabNormal , double tabTau [] , int indiceTab  )
 {
 	//calcul de la matrice de covarience des voisins: C 
 	double matCov [3*3];
+	//approximation de la normale par le vecteur propre corrspondant à la plus petitte valeur propre
+	double normalePoint[3];
 	//que l'on initialise à 0
 	for( int i = 0 ; i < 9 ; i++ )
 	{
@@ -81,39 +85,101 @@ void calculParametre( double vecteurs [][3] , int k )
 	int rot_num;
 	double v [3*3]; // la ou l'on stocke nos eigenvectors
 
-	cout << "\n";
+	/*cout << "\n";
 	cout << "TEST01\n";
 	cout << "  For a symmetric matrix A,\n";
 	cout << "  JACOBI_EIGENVALUE computes the eigenvalues D\n";
 	cout << "  and eigenvectors V so that A * V = D * V.\n";
-
 	r8mat_print ( n , n , matCov , "  Input matrix A:" );
-
+	*/
 	it_max = 100;
 
 	jacobi_eigenvalue ( n, matCov, it_max, v, d, it_num, rot_num );
-
+	/*
 	cout << "\n";
 	cout << "  Number of iterations = " << it_num << "\n";
 	cout << "  Number of rotations  = " << rot_num << "\n";
 
 	r8vec_print ( n, d, "  Eigenvalues D:" );
 
-	r8mat_print ( n, n, v, "  Eigenvector matrix V:" );
+	r8mat_print ( n, n, v, "  Eigenvector matrix V:" );*/
 	//  Compute eigentest.
 	error_frobenius = r8mat_is_eigen_right ( n, n, matCov, v, d );
-	cout << "\n";
-	cout << "  Frobenius norm error in eigensystem A*V-D*V = " << error_frobenius << "\n";
-	   
+	/*cout << "\n";
+	cout << "  Frobenius norm error in eigensystem A*V-D*V = " << error_frobenius << "\n";*/
+	
+	//paramètres à calculer
+	double tau; //variation surfacique
+	
+	double tmpSum = d[0]+d[1]+d[2];
+	double tmpMin = std::min( d[0] , d[1] );
+	
+	//on cherche le vecteur propre correspondant
+	if( tmpMin == d[0] )
+	{
+		normalePoint[0] = v[0];
+		normalePoint[1] = v[1];
+		normalePoint[2] = v[2];
+	}
+	if( tmpMin == d[1] )
+	{
+		normalePoint[0] = v[3];
+		normalePoint[1] = v[4];
+		normalePoint[2] = v[5];
+	}
+	if( tmpMin == d[2] )
+	{
+		normalePoint[0] = v[6];
+		normalePoint[1] = v[7];
+		normalePoint[2] = v[8];
+	}
+	
+	tmpMin = std::min( tmpMin , d[2] );
+	/*cout << "somme des valeurs propres = " << tmpSum << "\n";
+	cout << "plus petitte valeur propre = " << tmpMin << "\n";*/
+	//on a donc ici nos valeurs/vecteurs propres
+	
+	//calcul de la "variation surfacique" tau, qui est une bonne approximation de la courbure
+	tau = tmpMin / tmpSum;
+	
+	//on remplit nos resutat dans nos tableaux
+	tabNormal[indiceTab][0] = normalePoint[0];
+	tabNormal[indiceTab][1] = normalePoint[1];
+	tabNormal[indiceTab][2] = normalePoint[2];
+	tabTau[indiceTab] = tau;
 	return;
 }
-
-int main()
+double dotProduct( double v1 [3] , double v2 [3] )
 {
-	double vec [1][3];
-	vec[0][0] = 7.0;
-	vec[0][1] = 32.5;
-	vec[0][2] = 13.0;
-	int nbVoisins = 1;
-	calculParametre( vec , nbVoisins );
+	double res = 0.0;
+	for( int i = 0 ; i < 3 ; i++ )
+	{
+		res = res + v1[i]*v2[i];
+	}
+	return res;
+}
+
+//tau est la variation surfacique du point considérée, normalPoint sa normale (vecteur propre de sa plus dpetitte valeur propre), normalNeighbourgs celles de ses voisins, k le nb de voisins
+// double[] tabAngle est le tableau des valeurs de tau de chaqu'une des points du nuage, a remplir à la case [indiceTab]
+// double[] tabPoids est le tableau des valeurs de tau de chaqu'une des points du nuage, a remplir à la case [indiceTab]
+void calculeAngleTau( double tau , double normalPoint[3] , double normalNeighbourgs[][3] , int k , double tabAngle [] ,  double tabPoids [] , int indiceTab )
+{
+	//poid du points considéré
+	double poids = 0.0;
+	double coefficiantTau; //coeff multiplicative appliqué a tau
+	//on calcule la somme des angle entre la normale du point considéré et celle de ses voisins.
+	double angle = 0.0;
+	double tmpAngle;
+	for( int i = 0 ; i < k ; i++ )
+	{	// tmpAngle = cos(angle) = v1 dotProduct v2 / norm(v1)*norm(v2)
+		tmpAngle = dotProduct( normalPoint , normalNeighbourgs[i] ) / sqrt(dotProduct( normalPoint , normalPoint ))*sqrt(dotProduct( normalNeighbourgs[i] , normalNeighbourgs[i] )) ;
+		angle = angle + acos(tmpAngle);
+	}
+	
+	//on a ici notre angle et notre tau, on peux donc calculer le poid effectif de ce point.
+	poids = angle + coefficiantTau*tau;
+	
+	tabAngle[indiceTab] = angle;
+	tabPoids[indiceTab] = poids;
+	return;
 }
