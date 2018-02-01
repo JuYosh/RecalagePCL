@@ -14,6 +14,8 @@
 #include <pcl/common/common_headers.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-std::vector<std::vector<int> > correspondance(float angleS[], float angleM[], float courbureS[], float courbureM[], float seuilCourbure, float seuilAngle, std::vector<int> &indicesS, std::vector<int> &indicesM);
+#include "correspondance.cpp"
+
+std::vector<std::vector<int> > correspondance(double angleS[], double angleM[], double courbureS[], double courbureM[], double seuilCourbure, double seuilAngle, std::vector<int> indicesS, std::vector<int> indicesM);
 
 #endif
