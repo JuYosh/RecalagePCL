@@ -1,6 +1,7 @@
 #ifndef _CORRESPONDANCE_
 #define _CORRESPONDANCE_
 
+#include <cmath>
 #include <vector>
 #include <iterator>
 #include <iostream>

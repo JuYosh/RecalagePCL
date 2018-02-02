@@ -18,7 +18,8 @@ std::vector<std::vector<int> > correspondance(double angleS[], double angleM[], 
 
 		for(j = indicesM.begin() ; j < indicesM.end() ; j++)
 		{
-			if(abs(courbureS[*i] - courbureM[*j]) <= seuilCourbure && abs(angleS[*i] - angleM[*j]) <= seuilAngle)
+			cout << fabs(courbureS[*i] - courbureM[*j]) << "	" << *i << " " << *j << endl;
+			if(fabs(courbureS[*i] - courbureM[*j]) <= seuilCourbure && fabs(angleS[*i] - angleM[*j]) <= seuilAngle)
 			{
 				resultats.push_back(abs(courbureS[*i] - courbureM[*j]) + abs(angleS[*i] - angleM[*j])); // Une idée
 				bloap.push_back(*j);
