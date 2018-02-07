@@ -10,6 +10,8 @@
 #include <pcl/common/common_headers.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include "viewer.cpp"
+
 void viewer(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloupy);
 
 #endif
