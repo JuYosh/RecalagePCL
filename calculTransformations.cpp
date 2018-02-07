@@ -1,7 +1,7 @@
 # include <cmath>
 #include <iostream>
-#include <stdlib.h>     /* srand, rand */
-#include <time.h>       /* time */
+//#include <stdlib.h>     /* srand, rand */
+//#include <time.h>       /* time */
 using namespace std;
 
 
@@ -86,7 +86,7 @@ void normalize( double A [3] )
 //calcul de la transformation (rotation et translation) pour passer de A à B
 //On calcule la tranlation apr rapport aux coordonées des points et la rotation par rapport a leurs normales
 //les resultats sont ecrits dans rotation et dans translation
-void calculTransformation( double A [3] , double B [3] , double rotation [3][3], double translation [3] )
+void calculTransformation( double A [3] , double B [3] , double normaleA [3] , double normaleB [3] , double rotation [3][3], double translation [3] )
 {
 	double tmpAngle , angle;//angleX , angleY , angleZ;
 	double tmpA [3];
@@ -102,13 +102,13 @@ void calculTransformation( double A [3] , double B [3] , double rotation [3][3],
 	
 	//calcul de la rotation
 	//on va calculer l'angle entre A et B
-	setTabDbl3( tmpA , A );
-	setTabDbl3( tmpB , B);
+	setTabDbl3( tmpA , normaleA );
+	setTabDbl3( tmpB , normaleB);
 	normalize(tmpA);
 	normalize(tmpB);
 	angle = calculerAngle( tmpA , tmpB );
-	/*cout << "vecteur A = " << A[0] << " | "<< A[1] << " | "<< A[2] << endl;
-	cout << "vecteur B = " << B[0] << " | "<< B[1] << " | "<< B[2] << endl << endl;
+	/*cout << "vecteur A = " << normaleA[0] << " | "<< normaleA[1] << " | "<< normaleA[2] << endl;
+	cout << "vecteur B = " << normaleB[0] << " | "<< normaleB[1] << " | "<< normaleB[2] << endl << endl;
 	cout << "vecteur A norm = " << tmpA[0] << " | "<< tmpA[1] << " | "<< tmpA[2] << endl;
 	cout << "vecteur B norm = " << tmpB[0] << " | "<< tmpB[1] << " | "<< tmpB[2] << endl << endl;*/
 	//le vecteur portant l'axe de  la rotation est le produit vectoriel A vect B

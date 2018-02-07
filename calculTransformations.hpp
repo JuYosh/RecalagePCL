@@ -8,5 +8,5 @@ extern void R( double res[3] , double v [3] , double angle , double axe [3] , do
 extern void prodVect( double res[3] , double u [3] , double v [3] );
 extern void setTabDbl3( double A[3] , double B[3] );
 extern void normalize( double A [3] );
-extern void calculTransformation( double A [3] , double B [3] , double rotation [3][3], double translation [3] );
+extern void calculTransformation( double A [3] , double B [3] , double normaleA [3] , double normaleB [3] , double rotation [3][3], double translation [3] );
 #endif /* #ifndef __include_fichier_h__ */
