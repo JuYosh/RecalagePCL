@@ -8,7 +8,7 @@ std::vector<int> seuillage(double *poids, pcl::PointCloud<pcl::PointXYZRGB>::Ptr
 	{
 		if(poids[i] > seuil)
 		{
-			cout << seuil << "	" << poids[i] << "	" << i << endl;
+			//cout << seuil << "	" << poids[i] << "	" << i << endl;
 			indices.push_back(i);
 		}
 	}

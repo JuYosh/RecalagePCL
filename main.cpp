@@ -3,6 +3,7 @@
 #include <string>
 #include <iterator>
 #include <iostream>
+#include <stdlib.h>
 
 #include <pcl/io/vtk_lib_io.h>
 #include <boost/thread/thread.hpp>
@@ -25,13 +26,17 @@
 #include <vtkSmartPointer.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkRenderWindowInteractor.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/common/transforms.h>
 
 #include "seuillage.hpp"
 #include "creerNuage.hpp"
 #include "correspondance.hpp"
 #include "calculParametres.hpp"
 #include "plusProchesVoisins.hpp"
-
+#include "calculTransformations.hpp"
+#include "matchingError.hpp"
+#include "creerNuageSeuille.hpp"
 
 // --------------
 // -----Main-----
@@ -40,9 +45,10 @@ int main (int argc, char** argv)
 {
 	// Pointeurs sur les nuages
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_S, cloud_M;
-	std::string inputFilename = "../Nuages/Essais_7.1.stl";
+	std::string inputFilenameSource = "../Nuages/Essais_7.2.stl";
+	std::string inputFilenameTarget = "../Nuages/Essais_7.3.stl";
 	
-	int K = 10; //nombre de voisins
+	int K = 15; //nombre de voisins
 	int nbPointsCloud_S, nbPointsCloud_M; // nombre de points dans le nuage
 	double vecteurs[K][3]; // vecteur des distance aux voisins
 	
@@ -67,8 +73,18 @@ int main (int argc, char** argv)
 	std::vector<pcl::visualization::Camera> cam;
 	
 	// Ouverture du fichier
-	cloud_S = creerNuage(inputFilename);
-	cloud_M = creerNuage(inputFilename);
+	cloud_S = creerNuage(inputFilenameSource);
+	cloud_M = creerNuage(inputFilenameTarget);
+
+	//on reduit le nombre de points du nuage Source
+	pcl::VoxelGrid<pcl::PointXYZRGB> sor;
+  	sor.setInputCloud (cloud_S);
+ 	sor.setLeafSize (0.7f, 0.7f, 0.7f);
+  	sor.filter (*cloud_S);
+
+	//on reduit le nombre de points du nuage Target
+  	sor.setInputCloud (cloud_M);
+  	sor.filter (*cloud_M);
 
 	//On initialise tous les points à blanc
 	nbPointsCloud_S = cloud_S->points.size();
@@ -85,8 +101,6 @@ int main (int argc, char** argv)
 		cloud_M->points[i].g = 255;
 		cloud_M->points[i].b = 255;
 	}
-
-
 
 	/* Partie de code de Mathieu */	
 	tabTau_S = (double*)(malloc( nbPointsCloud_S * sizeof(*tabTau_S) ) );
@@ -168,20 +182,28 @@ int main (int argc, char** argv)
 		cout << "Erreur lors de l'assignation memoire de tabPoids !\nFin du programme.";
 		return EXIT_FAILURE;
 	}
-
-	//premiere boucle de parcours des points du nuage pour calculer le KPPV, puis tau et la normale
+	
+	//premiere boucle de parcours des points du nuage SOURCE pour calculer le KPPV, puis tau et la normale
 	//affichage de la "progression" du calcul
-	//cout << 	"Progression:	0	10	20	30	40	50	60	70	80	90	100		\n";
-	//cout << 	"			    [#"; //on ajoute un "#" tout les 10/4 = 2.5%
+	cout <<		"ETAPE 1" << endl;
+	cout << 	"Progression:	0	10	20	30	40	50	60	70	80	90	100	" << endl;
+	cout << 	"			    [#"; //on ajoute un "#" tout les 10/4 = 2.5%
+	tmp = (double)(nbPointsCloud_S);
+	int compteur = 0;
 	
 	t0 = clock();
-	for( int i = 0 ; i < 10 ; i++ )
+	for( int i = 0 ; i < nbPointsCloud_S ; i++ )
 	{
+		if( (double)(i) > compteur*0.025*tmp )
+		{
+			cout << 	"#";
+			compteur++;
+		}
 		//On utilise KKPV en passant les X, Y et Z du searchPoint, K, le tableau à remplir et le cloud
 		kppv( cloud_S->points[i].x , cloud_S->points[i].y , cloud_S->points[i].z , K , vecteurs , cloud_S );
 		
 		//on demande le calcul des parametres normale et tau
-		calculParametres( vecteurs , K , tabNormal_S , tabTau_S , i );
+		calculParametre( vecteurs , K , tabNormal_S , tabTau_S , i );
 		/*if( i == 0 )
 		{
 			t1 = clock();
@@ -196,12 +218,11 @@ int main (int argc, char** argv)
 			cout << "Execution de 10 fois " << K << "ppv et calcul parametre = " << tmp << " s\n" ;
 		}*/
 	}
-	tmp = (double)(nbPointsCloud_S);
-	cout << "Nombre de points du nuage: " << tmp << "\n";
+	
 	
 	// deuxieme boucle de parcours des points du nuage pour calculer le KPPV, et acceder au coef angulaire et au poids
 	t0 = clock();
-	for( int i = 0 ; i < 10 ; i++ )
+	for( int i = 0 ; i < nbPointsCloud_S ; i++ )
 	{
 		kppv( cloud_S->points[i].x , cloud_S->points[i].y , cloud_S->points[i].z , K , vecteurs , cloud_S );
 		calculeAngleTau( tabTau_S[i] , tabNormal_S[i] , vecteurs , K , tabAngle_S , tabPoids_S , i );
@@ -221,20 +242,20 @@ int main (int argc, char** argv)
 	}
 	
 
-	//premiere boucle de parcours des points du nuage pour calculer le KPPV, puis tau et la normale
+	//premiere boucle de parcours des points du nuage TARGET pour calculer le KPPV, puis tau et la normale
 	//affichage de la "progression" du calcul
 	//cout << 	"Progression:	0	10	20	30	40	50	60	70	80	90	100		\n";
 	//cout << 	"			    [#"; //on ajoute un "#" tout les 10/4 = 2.5%
 	
 	t0 = clock();
-	for( int i = 0 ; i < 10 ; i++ )
+	for( int i = 0 ; i < nbPointsCloud_M ; i++ )
 	{
 
 		//On utilise KKPV en passant les X, Y et Z du searchPoint, K, le tableau à remplir et le cloud
 		kppv( cloud_M->points[i].x , cloud_M->points[i].y , cloud_M->points[i].z , K , vecteurs , cloud_M );
 		
 		//on demande le calcul des parametres normale et tau
-		calculParametres( vecteurs , K , tabNormal_M , tabTau_M , i );
+		calculParametre( vecteurs , K , tabNormal_M , tabTau_M , i );
 		/*if( i == 0 )
 		{
 			t1 = clock();
@@ -250,11 +271,11 @@ int main (int argc, char** argv)
 		}*/
 	}
 	tmp = (double)(nbPointsCloud_M);
-	cout << "Nombre de points du nuage: " << tmp << "\n";
-
+	cout << endl << "Nombre de points du nuage TARGET: " << nbPointsCloud_M << endl;
+	cout << "Nombre de points du nuage SOURCE: " << nbPointsCloud_S << endl;
 	// deuxieme boucle de parcours des points du nuage pour calculer le KPPV, et acceder au coef angulaire et au poids
 	t0 = clock();
-	for( int i = 0 ; i < 10 ; i++ )
+	for( int i = 0 ; i < nbPointsCloud_M ; i++ )
 	{
 		kppv( cloud_M->points[i].x , cloud_M->points[i].y , cloud_M->points[i].z , K , vecteurs , cloud_M );
 		calculeAngleTau( tabTau_M[i] , tabNormal_M[i] , vecteurs , K , tabAngle_M , tabPoids_M , i );
@@ -273,46 +294,114 @@ int main (int argc, char** argv)
 		}*/
 	}
 	
-	cout << "Bloap" << endl;
-	indices_S = seuillage(tabPoids_S, cloud_S, 0);
+	//cout << "Pony" << endl;
+	//indices_S = seuillage(tabPoids_S, cloud_S, 0);
 	
-	for(std::vector<int>::iterator i = indices_S.begin() ; i != indices_S.end() ; i++)
+	/*for(std::vector<int>::iterator i = indices_S.begin() ; i != indices_S.end() ; i++)
 	{
 		cloud_S->points[*i].r = 255;
 		cloud_S->points[*i].g = 0;
 		cloud_S->points[*i].b = 0;
-	}
-	cout << "Bloap" << endl;
-	indices_M = seuillage(tabPoids_M, cloud_M, 0);
+	}*/
+	//cout << "Bloap" << endl;
+	//indices_M = seuillage(tabPoids_M, cloud_M, 0);
 	
-	for(std::vector<int>::iterator i = indices_M.begin() ; i != indices_M.end() ; i++)
+	//on fait un seuillage sur nos nuages de points
+	std::vector<int> indiceSeuillageSource;
+	std::vector<int> indiceSeuillageTarget;
+	//initialisation des threshold pour le seuillage
+	double seuil_S , seuil_M;
+	seuil_S = seuil_M = 0.0;
+	indiceSeuillageTarget = seuillage( tabPoids_M , cloud_M , seuil_M );
+	indiceSeuillageSource = seuillage( tabPoids_S , cloud_S , seuil_S );
+	cout << "Nb pts seuilles S = " << indiceSeuillageSource.size() << endl;
+	cout << "Nb pts seuilles M = " << indiceSeuillageTarget.size() << endl;
+	//calcul des correspondances entres les deux nuages
+	std::vector<std::vector<int> > correspondances = correspondance(tabAngle_S, tabAngle_M, tabTau_S, tabTau_M, 0.00001, 0.00001, indiceSeuillageSource, indiceSeuillageTarget);
+	int nbCor = 0 , indiceCor = 0;
+	int tmpIndiceCor [2];
+	//on recale par rapport a un des point de correspondance
+	srand( time(NULL) );
+	indiceCor = rand()%( indiceSeuillageTarget.size() );//on prend au hasard une correspondance depuis le tableau d'indice: indiceSeuillageTarget
+	indiceCor = indiceSeuillageTarget[indiceCor]; //on recupere l'indice dans le tableau: correspondance
+	tmpIndiceCor[0] = correspondances[indiceCor][0];//on recupere le rand ieme point de correspondance
+	tmpIndiceCor[1] = correspondances[indiceCor][1];
+	/*for(int i = 0 ; i < correspondances.size() ; i++)
 	{
-		cloud_M->points[*i].r = 255;
-		cloud_M->points[*i].g = 0;
-		cloud_M->points[*i].b = 0;
-	}
-	
-	std::vector<std::vector<int> > correspondances = correspondance(tabAngle_S, tabAngle_M, tabTau_S, tabTau_M, 0.00001, 0.00001, indices_S, indices_M);
-	
+		if( correspondances[i][1] != -1 )
+		{
+			tmpIndiceCor[0] = correspondances[i][0];//on recupere le 1er point de correspondance
+			tmpIndiceCor[1] = correspondances[i][1];
+			break;
+		}
+	}*/
 	for(int i = 0 ; i < correspondances.size() ; i++)
 	{
-		for(int j = 0 ; j < correspondances[i].size() ; j++)
+		if( correspondances[i][1] != -1 )
 		{
-			cout << correspondances[i][j] << " ";
+			nbCor++;
 		}
-		cout << endl;
 	}
-
+	cout << "Nombre de correspondances = " << nbCor << endl;
+	
+	//on calcule la transformation entre un pts d'interet du nuage source apar rapport a son correspondant dans target
+	double A [3] , B[3] , A_normal [3] , B_normal [3];
+	A[0] = cloud_S->points[ tmpIndiceCor[0] ].x;	A[1] = cloud_S->points[ tmpIndiceCor[0] ].y;	A[2] = cloud_S->points[ tmpIndiceCor[0] ].z;
+	B[0] = cloud_M->points[ tmpIndiceCor[1] ].x;	B[1] = cloud_M->points[ tmpIndiceCor[1] ].y;	B[2] = cloud_M->points[ tmpIndiceCor[1] ].z;
+	
+	A_normal[0] = tabNormal_S[ tmpIndiceCor[0] ][0];	A_normal[1] = tabNormal_S[ tmpIndiceCor[0] ][1];	A_normal[2] = tabNormal_S[ tmpIndiceCor[0] ][2];
+	B_normal[0] = tabNormal_M[ tmpIndiceCor[1] ][0];	B_normal[1] = tabNormal_M[ tmpIndiceCor[1] ][1];	B_normal[2] = tabNormal_M[ tmpIndiceCor[1] ][2];
+	
+	double rotation [3][3];
+	double translation [3];
+	calculTransformation( A , B ,  A_normal , B_normal , rotation, translation );
+	
+	Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+	for(int i = 0; i < 4; i++)
+	{
+		for(int j = 0; j < 4; j++)
+		{
+			if( i < 3 && j < 3)
+			{
+				transform(j, i) = rotation[i][j];
+			}
+			else if ( i >= 3 )
+			{
+				transform(j, i) = translation[j];
+			}
+			if( i == 3 && j == 3 ) 
+			{
+				transform(j, i) = 1;
+			}
+		}
+	}
+	
+	
+	//pcl::transformPointCloud( *cloud_S, *cloud_S, transform);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud_M_Seuille;
+	pCloud_M_Seuille = creerNuageSeuille( cloud_M , indiceSeuillageTarget );
+	double mError = 0.0;
+	mError = matchingError( cloud_S , indiceSeuillageSource , pCloud_M_Seuille , tabAngle_S , tabTau_S , tabAngle_M , tabTau_M , correspondances );
+	cout << "matchin error = " << mError << endl;
+	
+	
+	/*for( int i = 0 ; i < nbPointsCloud_M ; i++ )
+	{
+		cout << tabPoids_M[i] << endl;
+	}*/
 	// Visualize PCL
 	// Création de l'objet viewer avec un joli titre pour la fenêtre de visualisation
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer("Petite pièce adorée"));
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer("Petite pony adorée"));
 	// Définition de la couleur du fond
 	viewer->setBackgroundColor(0.4, 0, 0.6);
 	// Ajout des point du cloud au viewer, avec un ID string qui peut être utilisé pour identifier le cloud
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_S);
-	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_S, rgb, "sample cloud"); 
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> rgb1(cloud_S, 255, 0, 0);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> rgb2(cloud_M, 0, 255, 0);
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_S, rgb1, "sample cloud1"); 
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_M, rgb2, "sample cloud2"); 
+	
 	// Change la taille des points du nuage
-	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
+	//viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
 	// Ajout des axes (de taille 1.0)
 	viewer->addCoordinateSystem(1.0);
 	// Initialisation de la caméra

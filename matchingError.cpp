@@ -3,6 +3,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/search/kdtree.h>
+#include <pcl/filters/voxel_grid.h>
+
 using namespace std;
 
 //calcul de la distance en norme 2 (euclidienne) entre le point A et B de R3
@@ -18,15 +20,16 @@ double matchingError( pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloudSource , std:
 						double tabAngleSource [] , double tabTauSource [] , double tabAngleTarget [] , double tabTauTarget [] , std::vector<std::vector<int> > vectCorresp )
 {
 	int nbPointsInteretSource;
-	nbPointsInteretSource = sizeof( indicePtsInteretSource );
+	nbPointsInteretSource = indicePtsInteretSource.size();
 	
 	double matchingError = 0.0;
 	//pour chaque points d'interet on calcule la matching error
-	for( int i = 0 ; i < nbPointsInteretSource , i++ )
+	for( int i = 0 ; i < nbPointsInteretSource ; i++ )
 	{
 		//test si le point de S(source) à un point de correspondance, dans ce cas on calcule l'erreur
 		if( vectCorresp[ indicePtsInteretSource[i] ][1] != -1 )
 		{
+			//cout << "On est dans un pts de corresp pour le calcul de lerreur!		pts numero " << i << endl;
 			//Création du kdtree et input du nuage target
 			pcl::KdTreeFLANN<pcl::PointXYZRGB> kdtree;
 			kdtree.setInputCloud(pCloudTarget);
@@ -38,22 +41,29 @@ double matchingError( pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloudSource , std:
 			searchPoint.z = pCloudSource->points[ indicePtsInteretSource[i] ].z;
 
 			//Vecteurs d'ID et Distances pour la recherche
-			std::vector<int> pointIdxNKNSearch(K);
-			std::vector<float> pointNKNSquaredDistance(K);
+			std::vector<int> pointIdxNKNSearch(1);
+			std::vector<float> pointNKNSquaredDistance(1);
 
 			
 			//Recherche par rapport au searchPoint et remplissage du tableau en paramètre
 			if ( kdtree.nearestKSearch (searchPoint, 1, pointIdxNKNSearch, pointNKNSquaredDistance) > 0 )
 			{
-				pCloudTarget->points[ pointIdxNKNSearch[0] ].x;
+				/*pCloudTarget->points[ pointIdxNKNSearch[0] ].x;
 				pCloudTarget->points[ pointIdxNKNSearch[0] ].y;
-				pCloudTarget->points[ pointIdxNKNSearch[0] ].z;
+				pCloudTarget->points[ pointIdxNKNSearch[0] ].z;*/
+				double coordS [3] , coordM [3];
+				coordS[0] = pCloudSource->points[ indicePtsInteretSource[i] ].x;	coordS[1] = pCloudSource->points[ indicePtsInteretSource[i] ].y; coordS[2] = pCloudSource->points[ indicePtsInteretSource[i] ].z;
+				coordM[0] = pCloudTarget->points[ pointIdxNKNSearch[0] ].x;	coordM[1] = pCloudTarget->points[ pointIdxNKNSearch[0] ].y; coordM[2] = pCloudTarget->points[ pointIdxNKNSearch[0] ].z;
+				
 				//on ajoute la distance entre nos 2 points de correspondance à l'erreur
-				matchingError = matchingError + norme2( pCloudTarget->points[ pointIdxNKNSearch[0] ] , pCloudSource->points[ indicePtsInteretSource[i] ] );
+				matchingError = matchingError + norme2( coordS , coordM );
 				//on ajoute la difference des parametres angulaires entre ces deux points
 				matchingError = matchingError + fabs( tabAngleTarget[ pointIdxNKNSearch[0] ] - tabAngleSource[ indicePtsInteretSource[i] ] );
 				//on ajoute la difference des parametres tau (courbure) entre ces deux points
 				matchingError = matchingError + fabs( tabTauTarget[ pointIdxNKNSearch[0] ] - tabTauSource[ indicePtsInteretSource[i] ] );
+				
+				//puis on change la relation de correspondance pour qu'elle soit conforme a celle que l'on viens de trouver
+				indicePtsInteretSource[i] = pointIdxNKNSearch[0];
 			}
 		}
 	}

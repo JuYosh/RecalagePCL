@@ -2,6 +2,7 @@
 
 void kppv(double X, double Y, double Z, int K, double coords[][3], pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud )
 {
+	K = K + 1;//le points x y z comme comme etatn le 1 plus proche voisin de lui meme :O
 	//Création du kdtree et input du nuage
 	pcl::KdTreeFLANN<pcl::PointXYZRGB> kdtree;
 	kdtree.setInputCloud(pCloud);
@@ -20,17 +21,11 @@ void kppv(double X, double Y, double Z, int K, double coords[][3], pcl::PointClo
 	//Recherche par rapport au searchPoint et remplissage du tableau en paramètre
 	if ( kdtree.nearestKSearch (searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0 )
 	{
-    		for (size_t i = 0; i < pointIdxNKNSearch.size (); ++i)
+    		for (size_t i = 1; i < pointIdxNKNSearch.size (); ++i)
 		{				
-			coords[i][0] = pCloud->points[ pointIdxNKNSearch[i] ].x - X;
-			coords[i][1] = pCloud->points[ pointIdxNKNSearch[i] ].y - Y;
-			coords[i][2] = pCloud->points[ pointIdxNKNSearch[i] ].z - Z;
-
-			
-			//On les met en rouge
-			pCloud->points[ pointIdxNKNSearch[i] ].r = 255;
-			pCloud->points[ pointIdxNKNSearch[i] ].g = 0;
-			pCloud->points[ pointIdxNKNSearch[i] ].b = 0;
+			coords[i-1][0] = pCloud->points[ pointIdxNKNSearch[i] ].x - X;
+			coords[i-1][1] = pCloud->points[ pointIdxNKNSearch[i] ].y - Y;
+			coords[i-1][2] = pCloud->points[ pointIdxNKNSearch[i] ].z - Z;
 		}	
 	}
 }

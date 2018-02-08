@@ -11,7 +11,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
 
-add_executable (pcl_visualizer_demo pcl_visualizer_demo.cpp)
+add_executable (main main.cpp)
 
-target_link_libraries (pcl_visualizer_demo ${PCL_LIBRARIES})
-target_link_libraries (pcl_visualizer_demo ${VTK_LIBRARIES})
+target_link_libraries (main ${PCL_LIBRARIES})
+target_link_libraries (main ${VTK_LIBRARIES})

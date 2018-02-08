@@ -8,7 +8,8 @@
 #include <pcl/console/parse.h>
 #include <boost/thread/thread.hpp>
 #include <pcl/common/common_headers.h>
+#include "creerNuageSeuille.cpp"
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr creerNuageSeuille(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, std::vector<int> indices);
+extern pcl::PointCloud<pcl::PointXYZRGB>::Ptr creerNuageSeuille(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, std::vector<int> indices);
 
 #endif

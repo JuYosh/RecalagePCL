@@ -17,7 +17,6 @@
 # include <cmath>
 # include <ctime>
 # include <cstring>
-#include <math.h>
 
 #include <functional>   // std::minus
 //#include <numeric>      // std::accumulate
@@ -69,6 +68,7 @@ void calculParametre( double vecteurs [][3] , int k , double** tabNormal , doubl
 		matCov[6] = matCov[6] + vecteurs[i][2]*vecteurs[i][0];
 		matCov[7] = matCov[7] + vecteurs[i][2]*vecteurs[i][1];
 		matCov[8] = matCov[8] +vecteurs[i][2]*vecteurs[i][2];
+		//cout << "vect = " << vecteurs[i][0] << " | " << vecteurs[i][1] << " | " << vecteurs[i][2] << endl;
 	}
 	/*double matCov [4*4] = {
       4.0,  -30.0,    60.0,   -35.0, 
@@ -143,12 +143,16 @@ void calculParametre( double vecteurs [][3] , int k , double** tabNormal , doubl
 	tau = tmpMin / tmpSum;
 	
 	//on remplit nos resutat dans nos tableaux
+	
+	//cout << "NORMALE = " << normalePoint[0] << " | " << normalePoint[1] << " | " << normalePoint[2] << endl << endl;
+	
 	tabNormal[indiceTab][0] = normalePoint[0];
 	tabNormal[indiceTab][1] = normalePoint[1];
 	tabNormal[indiceTab][2] = normalePoint[2];
 	tabTau[indiceTab] = tau;
 	return;
 }
+
 double dotProduct( double v1 [3] , double v2 [3] )
 {
 	double res = 0.0;
@@ -158,6 +162,38 @@ double dotProduct( double v1 [3] , double v2 [3] )
 	}
 	return res;
 }
+
+void normaliser( double A [3] )
+{
+	double normeA;
+	normeA = sqrt( dotProduct( A , A ) );
+	A[0] = A[0] / normeA;
+	A[1] = A[1] / normeA;
+	A[2] = A[2] / normeA;
+}
+
+void setDbl3( double A[3] , double B[3] ) //set tab A to values of tab B
+{
+	A[0] = B[0];
+	A[1] = B[1];
+	A[2] = B[2];
+}
+
+double calcAngle( double A[3] , double B[3] )
+{
+	double angle = 0.0;
+	angle = dotProduct( A , B ) / sqrt(dotProduct( A , A ))*sqrt(dotProduct( B , B )) ;
+	//cout << "cos angle = " << angle << endl;
+	if( angle > 1.0 )
+		angle = angle - (int)(angle);
+	if( angle < -1.0 )
+		angle = angle - (int)(angle);
+	//cout << "cos angleNEW = " << angle << endl;
+	angle = fabs(acos(angle));
+	//cout << "angle = " << angle << endl;
+	return angle;
+}
+
 
 //tau est la variation surfacique du point considérée, normalPoint sa normale (vecteur propre de sa plus dpetitte valeur propre), normalNeighbourgs celles de ses voisins, k le nb de voisins
 // double[] tabAngle est le tableau des valeurs de tau de chaqu'une des points du nuage, a remplir à la case [indiceTab]
@@ -169,13 +205,23 @@ void calculeAngleTau( double tau , double normalPoint[3] , double normalNeighbou
 	double coefficiantTau; //coeff multiplicative appliqué a tau
 	//on calcule la somme des angle entre la normale du point considéré et celle de ses voisins.
 	double angle = 0.0;
-	double tmpAngle;
+	double tmpAngle = 0.0;
+	double tmpPts [3] , tmpVoisin [3];
+	setDbl3( tmpPts , normalPoint );
+	normaliser( tmpPts );
 	for( int i = 0 ; i < k ; i++ )
-	{	// tmpAngle = cos(angle) = v1 dotProduct v2 / norm(v1)*norm(v2)
-		tmpAngle = dotProduct( normalPoint , normalNeighbourgs[i] ) / sqrt(dotProduct( normalPoint , normalPoint ))*sqrt(dotProduct( normalNeighbourgs[i] , normalNeighbourgs[i] )) ;
-		angle = angle + acos(tmpAngle);
+	{	
+		setDbl3( tmpVoisin , normalNeighbourgs[i] );
+		//cout << "Normale = " << normalNeighbourgs[i][0] << " | " << normalNeighbourgs[i][1] << " | " << normalNeighbourgs[i][2] << endl;
+		normaliser( tmpVoisin );
+		// tmpAngle = cos(angle) = v1 dotProduct v2 / norm(v1)*norm(v2)
+		//tmpAngle = dotProduct( tmpPts , tmpVoisin );// / sqrt(dotProduct( normalPoint , normalPoint ))*sqrt(dotProduct( normalNeighbourgs[i] , normalNeighbourgs[i] )) ;
+		//cout << "cos(angle) = " << tmpAngle << endl;
+		tmpAngle = calcAngle( tmpPts , tmpVoisin );
+		angle = angle + tmpAngle;
+		//cout << "TMPangle = " << tmpAngle << endl;
 	}
-	
+	//cout << "angle = " << angle << endl << endl;
 	//on a ici notre angle et notre tau, on peux donc calculer le poid effectif de ce point.
 	poids = angle + coefficiantTau*tau;
 	
