@@ -22,8 +22,8 @@
 //#include <numeric>      // std::accumulate
 //#include <algorithm>    // std::min_element, std::max_element
 
-# include "jacobi_eigenvalue.hpp"
-# include "jacobi_eigenvalue.cpp"
+#include "jacobi_eigenvalue.hpp"
+#include "jacobi_eigenvalue.cpp"
 
 #include <iostream>
 #include <pcl/io/pcd_io.h>

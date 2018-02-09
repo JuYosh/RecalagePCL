@@ -20,15 +20,15 @@ double matchingError( pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloudSource , std:
 						double tabAngleSource [] , double tabTauSource [] , double tabAngleTarget [] , double tabTauTarget [] , std::vector<std::vector<int> > vectCorresp )
 {
 	int nbPointsInteretSource;
-	nbPointsInteretSource = indicePtsInteretSource.size();
-	
+	nbPointsInteretSource = vectCorresp.size();
+	cout << "taille de vect corresp = " << nbPointsInteretSource << endl;
 	double matchingError = 0.0;
 	//pour chaque points d'interet on calcule la matching error
 	for( int i = 0 ; i < nbPointsInteretSource ; i++ )
 	{
 		//test si le point de S(source) à un point de correspondance, dans ce cas on calcule l'erreur
-		if( vectCorresp[ indicePtsInteretSource[i] ][1] != -1 )
-		{
+		/*if( vectCorresp[ indicePtsInteretSource[i] ][1] != -1 )
+		{*/
 			//cout << "On est dans un pts de corresp pour le calcul de lerreur!		pts numero " << i << endl;
 			//Création du kdtree et input du nuage target
 			pcl::KdTreeFLANN<pcl::PointXYZRGB> kdtree;
@@ -36,9 +36,9 @@ double matchingError( pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloudSource , std:
 			
 			//Définition du point de recherche: le poitn d'interet i du nuage source
 			pcl::PointXYZRGB searchPoint;
-			searchPoint.x = pCloudSource->points[ indicePtsInteretSource[i] ].x;
-			searchPoint.y = pCloudSource->points[ indicePtsInteretSource[i] ].y;
-			searchPoint.z = pCloudSource->points[ indicePtsInteretSource[i] ].z;
+			searchPoint.x = pCloudSource->points[ vectCorresp[i][0] ].x;
+			searchPoint.y = pCloudSource->points[ vectCorresp[i][0] ].y;
+			searchPoint.z = pCloudSource->points[ vectCorresp[i][0] ].z;
 
 			//Vecteurs d'ID et Distances pour la recherche
 			std::vector<int> pointIdxNKNSearch(1);
@@ -52,7 +52,7 @@ double matchingError( pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloudSource , std:
 				pCloudTarget->points[ pointIdxNKNSearch[0] ].y;
 				pCloudTarget->points[ pointIdxNKNSearch[0] ].z;*/
 				double coordS [3] , coordM [3];
-				coordS[0] = pCloudSource->points[ indicePtsInteretSource[i] ].x;	coordS[1] = pCloudSource->points[ indicePtsInteretSource[i] ].y; coordS[2] = pCloudSource->points[ indicePtsInteretSource[i] ].z;
+				coordS[0] = pCloudSource->points[ vectCorresp[i][0] ].x;	coordS[1] = pCloudSource->points[vectCorresp[i][0] ].y; coordS[2] = pCloudSource->points[ vectCorresp[i][0] ].z;
 				coordM[0] = pCloudTarget->points[ pointIdxNKNSearch[0] ].x;	coordM[1] = pCloudTarget->points[ pointIdxNKNSearch[0] ].y; coordM[2] = pCloudTarget->points[ pointIdxNKNSearch[0] ].z;
 				
 				//on ajoute la distance entre nos 2 points de correspondance à l'erreur
@@ -63,9 +63,9 @@ double matchingError( pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloudSource , std:
 				matchingError = matchingError + fabs( tabTauTarget[ pointIdxNKNSearch[0] ] - tabTauSource[ indicePtsInteretSource[i] ] );
 				
 				//puis on change la relation de correspondance pour qu'elle soit conforme a celle que l'on viens de trouver
-				indicePtsInteretSource[i] = pointIdxNKNSearch[0];
+				vectCorresp[i][1] = pointIdxNKNSearch[0];
 			}
-		}
+		//}
 	}
 	return matchingError;
 }

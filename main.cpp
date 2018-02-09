@@ -37,6 +37,7 @@
 #include "calculTransformations.hpp"
 #include "matchingError.hpp"
 #include "creerNuageSeuille.hpp"
+#include "appliquerTransformations.hpp"
 
 // --------------
 // -----Main-----
@@ -48,7 +49,7 @@ int main (int argc, char** argv)
 	std::string inputFilenameSource = "../Nuages/Essais_7.2.stl";
 	std::string inputFilenameTarget = "../Nuages/Essais_7.3.stl";
 	
-	int K = 15; //nombre de voisins
+	int K = 10; //nombre de voisins
 	int nbPointsCloud_S, nbPointsCloud_M; // nombre de points dans le nuage
 	double vecteurs[K][3]; // vecteur des distance aux voisins
 	
@@ -79,7 +80,7 @@ int main (int argc, char** argv)
 	//on reduit le nombre de points du nuage Source
 	pcl::VoxelGrid<pcl::PointXYZRGB> sor;
   	sor.setInputCloud (cloud_S);
- 	sor.setLeafSize (0.7f, 0.7f, 0.7f);
+ 	sor.setLeafSize (4.0f, 4.0f, 4.0f);
   	sor.filter (*cloud_S);
 
 	//on reduit le nombre de points du nuage Target
@@ -185,20 +186,20 @@ int main (int argc, char** argv)
 	
 	//premiere boucle de parcours des points du nuage SOURCE pour calculer le KPPV, puis tau et la normale
 	//affichage de la "progression" du calcul
-	cout <<		"ETAPE 1" << endl;
+	/*cout <<		"ETAPE 1" << endl;
 	cout << 	"Progression:	0	10	20	30	40	50	60	70	80	90	100	" << endl;
-	cout << 	"			    [#"; //on ajoute un "#" tout les 10/4 = 2.5%
+	cout << 	"			    [#"; //on ajoute un "#" tout les 10/4 = 2.5%*/
 	tmp = (double)(nbPointsCloud_S);
 	int compteur = 0;
 	
 	t0 = clock();
 	for( int i = 0 ; i < nbPointsCloud_S ; i++ )
 	{
-		if( (double)(i) > compteur*0.025*tmp )
+		/*if( (double)(i) > compteur*0.025*tmp )
 		{
 			cout << 	"#";
 			compteur++;
-		}
+		}*/
 		//On utilise KKPV en passant les X, Y et Z du searchPoint, K, le tableau à remplir et le cloud
 		kppv( cloud_S->points[i].x , cloud_S->points[i].y , cloud_S->points[i].z , K , vecteurs , cloud_S );
 		
@@ -312,78 +313,80 @@ int main (int argc, char** argv)
 	//initialisation des threshold pour le seuillage
 	double seuil_S , seuil_M;
 	seuil_S = seuil_M = 0.0;
+	// pour sample de 1.0
+	// 19 -> seuilS/M 6/2 cor=0
+	// 18 -> seuilS/M 28/16 cor=0
+	// 17 -> seuilS/M 58/34 cor=0
+	// 16 -> seuilS/M 152/198 cor=0
+	cout << "**********************NUAGE SOURCE***********" << endl;
+	for( int i = 0 ; i < indiceSeuillageSource.size() ; i++ )
+	{
+		cout << "ANGLE = " << tabAngle_S[i] << "	NORMALE = " << tabNormal_S[i][0] << " | " << tabNormal_S[i][1] << " | " << tabNormal_S[i][2] << endl;
+	}
+	cout << "**********************NUAGE TARGET***********" << endl;
+	for( int i = 0 ; i < indiceSeuillageTarget.size() ; i++ )
+	{
+		cout << "ANGLE = " << tabAngle_M[i] << "	NORMALE = " << tabNormal_M[i][0] << " | " << tabNormal_M[i][1] << " | " << tabNormal_M[i][2] << endl;
+	}
+	
 	indiceSeuillageTarget = seuillage( tabPoids_M , cloud_M , seuil_M );
 	indiceSeuillageSource = seuillage( tabPoids_S , cloud_S , seuil_S );
 	cout << "Nb pts seuilles S = " << indiceSeuillageSource.size() << endl;
 	cout << "Nb pts seuilles M = " << indiceSeuillageTarget.size() << endl;
 	//calcul des correspondances entres les deux nuages
 	std::vector<std::vector<int> > correspondances = correspondance(tabAngle_S, tabAngle_M, tabTau_S, tabTau_M, 0.00001, 0.00001, indiceSeuillageSource, indiceSeuillageTarget);
-	int nbCor = 0 , indiceCor = 0;
+	int indiceCor = 0;
 	int tmpIndiceCor [2];
-	//on recale par rapport a un des point de correspondance
+	
+	//cout << "Nombre de correspondances comptes = " << nbCor << endl;
+	cout << "Nombre de correspondances = " << correspondances.size() << endl;
+	
+	
 	srand( time(NULL) );
-	indiceCor = rand()%( indiceSeuillageTarget.size() );//on prend au hasard une correspondance depuis le tableau d'indice: indiceSeuillageTarget
-	indiceCor = indiceSeuillageTarget[indiceCor]; //on recupere l'indice dans le tableau: correspondance
-	tmpIndiceCor[0] = correspondances[indiceCor][0];//on recupere le rand ieme point de correspondance
-	tmpIndiceCor[1] = correspondances[indiceCor][1];
-	/*for(int i = 0 ; i < correspondances.size() ; i++)
-	{
-		if( correspondances[i][1] != -1 )
-		{
-			tmpIndiceCor[0] = correspondances[i][0];//on recupere le 1er point de correspondance
-			tmpIndiceCor[1] = correspondances[i][1];
-			break;
-		}
-	}*/
-	for(int i = 0 ; i < correspondances.size() ; i++)
-	{
-		if( correspondances[i][1] != -1 )
-		{
-			nbCor++;
-		}
-	}
-	cout << "Nombre de correspondances = " << nbCor << endl;
-	
-	//on calcule la transformation entre un pts d'interet du nuage source apar rapport a son correspondant dans target
-	double A [3] , B[3] , A_normal [3] , B_normal [3];
-	A[0] = cloud_S->points[ tmpIndiceCor[0] ].x;	A[1] = cloud_S->points[ tmpIndiceCor[0] ].y;	A[2] = cloud_S->points[ tmpIndiceCor[0] ].z;
-	B[0] = cloud_M->points[ tmpIndiceCor[1] ].x;	B[1] = cloud_M->points[ tmpIndiceCor[1] ].y;	B[2] = cloud_M->points[ tmpIndiceCor[1] ].z;
-	
-	A_normal[0] = tabNormal_S[ tmpIndiceCor[0] ][0];	A_normal[1] = tabNormal_S[ tmpIndiceCor[0] ][1];	A_normal[2] = tabNormal_S[ tmpIndiceCor[0] ][2];
-	B_normal[0] = tabNormal_M[ tmpIndiceCor[1] ][0];	B_normal[1] = tabNormal_M[ tmpIndiceCor[1] ][1];	B_normal[2] = tabNormal_M[ tmpIndiceCor[1] ][2];
-	
-	double rotation [3][3];
-	double translation [3];
-	calculTransformation( A , B ,  A_normal , B_normal , rotation, translation );
-	
-	Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
-	for(int i = 0; i < 4; i++)
-	{
-		for(int j = 0; j < 4; j++)
-		{
-			if( i < 3 && j < 3)
-			{
-				transform(j, i) = rotation[i][j];
-			}
-			else if ( i >= 3 )
-			{
-				transform(j, i) = translation[j];
-			}
-			if( i == 3 && j == 3 ) 
-			{
-				transform(j, i) = 1;
-			}
-		}
-	}
-	
-	
-	//pcl::transformPointCloud( *cloud_S, *cloud_S, transform);
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud_M_Seuille;
-	pCloud_M_Seuille = creerNuageSeuille( cloud_M , indiceSeuillageTarget );
-	double mError = 0.0;
-	mError = matchingError( cloud_S , indiceSeuillageSource , pCloud_M_Seuille , tabAngle_S , tabTau_S , tabAngle_M , tabTau_M , correspondances );
-	cout << "matchin error = " << mError << endl;
-	
+	for( int luna = 0 ; luna < 1 ; luna++ )
+	{		
+		indiceCor = rand()%( correspondances.size() );//on prend au hasard une correspondance depuis le tableau d'indice: indiceSeuillageTarget
+		indiceCor = luna;
+		//cout << "indice du pts de corr = " << indiceCor << endl;
+		//indiceCor = indiceSeuillageTarget[0]; //on recupere l'indice dans le tableau: correspondance
+		tmpIndiceCor[0] = correspondances[indiceCor][0];//on recupere le rand ieme point de correspondance
+		tmpIndiceCor[1] = correspondances[indiceCor][1];
+		//cout << "on est la 1" << endl;
+		//on calcule la transformation entre un pts d'interet du nuage source apar rapport a son correspondant dans target
+		double A [3] , B[3] , A_normal [3] , B_normal [3];
+		//cout << "tmp0 = " << tmpIndiceCor[0] << endl;
+		//cout << "tmp1 = " << tmpIndiceCor[1] << endl;
+		//cout << "on est la 1/2" << endl;*/
+		A[0] = cloud_S->points[ tmpIndiceCor[0] ].x;	A[1] = cloud_S->points[ tmpIndiceCor[0] ].y;	A[2] = cloud_S->points[ tmpIndiceCor[0] ].z;
+		//cout << "on est la 2/2" << endl;
+		B[0] = cloud_M->points[ tmpIndiceCor[1] ].x;	B[1] = cloud_M->points[ tmpIndiceCor[1] ].y;	B[2] = cloud_M->points[ tmpIndiceCor[1] ].z;
+		
+		A_normal[0] = tabNormal_S[ tmpIndiceCor[0] ][0];	A_normal[1] = tabNormal_S[ tmpIndiceCor[0] ][1];	A_normal[2] = tabNormal_S[ tmpIndiceCor[0] ][2];
+		B_normal[0] = tabNormal_M[ tmpIndiceCor[1] ][0];	B_normal[1] = tabNormal_M[ tmpIndiceCor[1] ][1];	B_normal[2] = tabNormal_M[ tmpIndiceCor[1] ][2];
+		
+		double rotation [3][3];
+		double translation [3];
+		
+		calculTransformation( A , B ,  A_normal , B_normal , rotation, translation );
+		
+		cout << "*** ROTATION A APPLIQUER: " << endl <<
+		rotation[0][0] << " | " << rotation[0][1] << " | " << rotation[0][2] << endl <<
+		rotation[1][0] << " | " << rotation[1][1] << " | " << rotation[1][2] << endl <<
+		rotation[2][0] << " | " << rotation[2][1] << " | " << rotation[2][2] << endl;
+		cout << endl << "*** TRANSLATION A APPLIQUER: " << endl <<
+		translation[0] << " | " << translation[1] << " | " << translation[2] << endl;
+		//cout << "on est la 2" << endl;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud_M_Seuille;
+		pCloud_M_Seuille = creerNuageSeuille( cloud_M , indiceSeuillageTarget );
+		//pcl::transformPointCloud( *cloud_S, *cloud_S, transform);
+		appliquerTransformations( cloud_S , rotation , translation );
+		
+		
+		double mError = 0.0;
+		//cout << "on est la 3" << endl;
+		mError = matchingError( cloud_S , indiceSeuillageSource , pCloud_M_Seuille , tabAngle_S , tabTau_S , tabAngle_M , tabTau_M , correspondances );
+		cout << endl << "matchin error = " << mError << endl << endl << endl;
+	}	
 	
 	/*for( int i = 0 ; i < nbPointsCloud_M ; i++ )
 	{
