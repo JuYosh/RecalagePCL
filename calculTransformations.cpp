@@ -1,4 +1,5 @@
 # include <cmath>
+#include <math.h>
 #include <iostream>
 //#include <stdlib.h>     /* srand, rand */
 //#include <time.h>       /* time */
@@ -18,12 +19,13 @@ double dot( double v1 [3] , double v2 [3] )
 double calculerAngle( double A[3] , double B[3] )
 {
 	double angle = 0.0;
-	angle = dot( A , B ) / sqrt(dot( A , A ))*sqrt(dot( B , B )) ;
+	
+	angle = dot( A , B ) / ( sqrt(dot( A , A ))*sqrt(dot( B , B )) ) ;
 	//cout << "cos angle = " << angle << endl;
 	if( angle > 1.0 )
-		angle = angle - (int)(angle);
+		angle = angle - floor(angle);
 	if( angle < -1.0 )
-		angle = angle - (int)(angle);
+		angle = angle - ceil(angle);
 	//cout << "cos angleNEW = " << angle << endl;
 	angle = fabs(acos(angle));
 	//cout << "angle = " << angle << endl;

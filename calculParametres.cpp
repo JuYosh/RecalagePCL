@@ -17,6 +17,7 @@
 # include <cmath>
 # include <ctime>
 # include <cstring>
+# include <math.h>
 
 #include <functional>   // std::minus
 //#include <numeric>      // std::accumulate
@@ -149,6 +150,8 @@ void calculParametre( double vecteurs [][3] , int k , double** tabNormal , doubl
 	tabNormal[indiceTab][0] = normalePoint[0];
 	tabNormal[indiceTab][1] = normalePoint[1];
 	tabNormal[indiceTab][2] = normalePoint[2];
+	
+	
 	tabTau[indiceTab] = tau;
 	return;
 }
@@ -182,12 +185,13 @@ void setDbl3( double A[3] , double B[3] ) //set tab A to values of tab B
 double calcAngle( double A[3] , double B[3] )
 {
 	double angle = 0.0;
-	angle = dotProduct( A , B ) / sqrt(dotProduct( A , A ))*sqrt(dotProduct( B , B )) ;
+       
+	angle = dotProduct( A , B ) /  ( sqrt(dotProduct( A , A ))*sqrt(dotProduct( B , B )) ) ;
 	//cout << "cos angle = " << angle << endl;
 	if( angle > 1.0 )
-		angle = angle - (int)(angle);
+		angle = angle - floor(angle);
 	if( angle < -1.0 )
-		angle = angle - (int)(angle);
+		angle = angle - ceil(angle);
 	//cout << "cos angleNEW = " << angle << endl;
 	angle = fabs(acos(angle));
 	//cout << "angle = " << angle << endl;
@@ -211,7 +215,10 @@ void calculeAngleTau( double tau , double normalPoint[3] , double normalNeighbou
 	normaliser( tmpPts );
 	for( int i = 0 ; i < k ; i++ )
 	{	
-		setDbl3( tmpVoisin , normalNeighbourgs[i] );
+		tmpVoisin[0] = normalNeighbourgs[i][0];
+		tmpVoisin[1] = normalNeighbourgs[i][1];
+		tmpVoisin[2] = normalNeighbourgs[i][2];
+		
 		//cout << "Normale = " << normalNeighbourgs[i][0] << " | " << normalNeighbourgs[i][1] << " | " << normalNeighbourgs[i][2] << endl;
 		normaliser( tmpVoisin );
 		// tmpAngle = cos(angle) = v1 dotProduct v2 / norm(v1)*norm(v2)

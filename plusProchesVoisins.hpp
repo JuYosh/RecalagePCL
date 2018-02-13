@@ -14,5 +14,6 @@
 #include "plusProchesVoisins.cpp"
 
 void kppv(double X, double Y, double Z, int K, double coords[][3], pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud );
+void kppv2(double X, double Y, double Z, int K, double coords[][3], pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud , double tabNormal[][3]);
 
 #endif

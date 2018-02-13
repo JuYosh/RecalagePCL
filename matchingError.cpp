@@ -54,13 +54,20 @@ double matchingError( pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloudSource , std:
 				double coordS [3] , coordM [3];
 				coordS[0] = pCloudSource->points[ vectCorresp[i][0] ].x;	coordS[1] = pCloudSource->points[vectCorresp[i][0] ].y; coordS[2] = pCloudSource->points[ vectCorresp[i][0] ].z;
 				coordM[0] = pCloudTarget->points[ pointIdxNKNSearch[0] ].x;	coordM[1] = pCloudTarget->points[ pointIdxNKNSearch[0] ].y; coordM[2] = pCloudTarget->points[ pointIdxNKNSearch[0] ].z;
+
+				
 				
 				//on ajoute la distance entre nos 2 points de correspondance à l'erreur
 				matchingError = matchingError + norme2( coordS , coordM );
+				cout << "Norme2 : "<< norme2( coordS , coordM ) << endl;
 				//on ajoute la difference des parametres angulaires entre ces deux points
 				matchingError = matchingError + fabs( tabAngleTarget[ pointIdxNKNSearch[0] ] - tabAngleSource[ indicePtsInteretSource[i] ] );
+				cout << "angle !!!  : "<< fabs( tabAngleTarget[ pointIdxNKNSearch[0] ] - tabAngleSource[ indicePtsInteretSource[i] ] ) << endl;
 				//on ajoute la difference des parametres tau (courbure) entre ces deux points
 				matchingError = matchingError + fabs( tabTauTarget[ pointIdxNKNSearch[0] ] - tabTauSource[ indicePtsInteretSource[i] ] );
+
+
+				cout << "fabs tau : "<< fabs( tabTauTarget[ pointIdxNKNSearch[0] ] - tabTauSource[ indicePtsInteretSource[i] ] ) << endl;
 				
 				//puis on change la relation de correspondance pour qu'elle soit conforme a celle que l'on viens de trouver
 				vectCorresp[i][1] = pointIdxNKNSearch[0];
