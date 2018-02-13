@@ -44,12 +44,13 @@
 // --------------
 int main (int argc, char** argv)
 {
+	cout << "ON COMMENCE " << endl;
 	// Pointeurs sur les nuages
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_S, cloud_M;
 	std::string inputFilenameSource = "bunnyBack2.stl";
-	std::string inputFilenameTarget = "bunnyHead2.stl";
+	std::string inputFilenameTarget = "bunnyHeadRotate.stl";
 	
-	int K = 5; //nombre de voisins
+	int K = 20; //nombre de voisins
 	int nbPointsCloud_S, nbPointsCloud_M; // nombre de points dans le nuage
 	double vecteurs[K][3]; // vecteur des distance aux voisins
 	
@@ -61,6 +62,11 @@ int main (int argc, char** argv)
 	double **tabNormal_M;
 	double *tabAngle_M;
 	double *tabPoids_M;
+
+	//initialisation des threshold pour le seuillage
+	double seuil_S , seuil_M;
+	seuil_S = 8.0;
+	seuil_M = 8.0;
 	
 	// Pour les calculs de progression de l'algo
 	double progression = 0.0;
@@ -78,14 +84,14 @@ int main (int argc, char** argv)
 	cloud_M = creerNuage(inputFilenameTarget);
 
 	//on reduit le nombre de points du nuage Source
-	pcl::VoxelGrid<pcl::PointXYZRGB> sor;
+	/*pcl::VoxelGrid<pcl::PointXYZRGB> sor;
   	sor.setInputCloud (cloud_S);
- 	sor.setLeafSize (1.0f, 1.0f, 1.0f);
+ 	sor.setLeafSize (0.1f, 0.1f, 0.1f);
   	sor.filter (*cloud_S);
 
 	//on reduit le nombre de points du nuage Target
   	sor.setInputCloud (cloud_M);
-  	sor.filter (*cloud_M); 
+  	sor.filter (*cloud_M); */
 
 	//On initialise tous les points à blanc
 	nbPointsCloud_S = cloud_S->points.size();
@@ -270,10 +276,7 @@ int main (int argc, char** argv)
 	//on fait un seuillage sur nos nuages de points
 	std::vector<int> indiceSeuillageSource;
 	std::vector<int> indiceSeuillageTarget;
-	//initialisation des threshold pour le seuillage
-	double seuil_S , seuil_M;
-	seuil_S = 8.0;
-	seuil_M = 8.0;
+	
 	// pour sample de 1.0
 	// 19 -> seuilS/M 6/2 cor=0
 	// 18 -> seuilS/M 28/16 cor=0
@@ -282,7 +285,8 @@ int main (int argc, char** argv)
 	
 	double A [3] , B[3] , A_normal [3] , B_normal [3];
 	double rotation [3][3];
-	double translation [3];
+	double translation1 [3];
+	double translation2 [3];
 	indiceSeuillageTarget = seuillage( tabPoids_M , cloud_M , seuil_M );
 	indiceSeuillageSource = seuillage( tabPoids_S , cloud_S , seuil_S );
 	
@@ -377,25 +381,31 @@ int main (int argc, char** argv)
 		B_normal[0] = tabNormal_M[ tmpIndiceCor[1] ][0];	B_normal[1] = tabNormal_M[ tmpIndiceCor[1] ][1];	B_normal[2] = tabNormal_M[ tmpIndiceCor[1] ][2];
 		
 		
-		calculTransformation( A , B ,  A_normal , B_normal , rotation, translation );
+		calculTransformation( A , B ,  A_normal , B_normal , rotation, translation1, translation2 );
 		
 		cout << "*** ROTATION A APPLIQUER: " << endl <<
 		rotation[0][0] << " | " << rotation[0][1] << " | " << rotation[0][2] << endl <<
 		rotation[1][0] << " | " << rotation[1][1] << " | " << rotation[1][2] << endl <<
 		rotation[2][0] << " | " << rotation[2][1] << " | " << rotation[2][2] << endl;
-		cout << endl << "*** TRANSLATION A APPLIQUER: " << endl <<
-		translation[0] << " | " << translation[1] << " | " << translation[2] << endl;
+		cout << endl << "*** TRANSLATION1 A APPLIQUER: " << endl <<
+		translation1[0] << " | " << translation1[1] << " | " << translation1[2] << endl;
+
+		cout << endl << "*** TRANSLATION2 A APPLIQUER: " << endl <<
+		translation2[0] << " | " << translation2[1] << " | " << translation2[2] << endl;
+
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud_M_Seuille;
 		pCloud_M_Seuille = creerNuageSeuille( cloud_M , indiceSeuillageTarget );
 		//pcl::transformPointCloud( *cloud_S, *cloud_S, transform);
-		appliquerTransformations( cloud_S , rotation , translation );
-		
+		appliquerTranslation( cloud_S , translation1 );
+		appliquerRotation( cloud_S , rotation );
+		appliquerTranslation( cloud_S , translation2 );
 		
 		double mError = 0.0;
 		//cout << "on est la 3" << endl;
 		mError = matchingError( cloud_S , indiceSeuillageSource , pCloud_M_Seuille , tabAngle_S , tabTau_S , tabAngle_M , tabTau_M , correspondances );
-		cout << endl << "matchin error = " << mError << endl << endl << endl;
+		cout << endl << "matching error = " << mError << endl << endl << endl;
 	}	
+
 	
 	// Visualize PCL
 	// Création de l'objet viewer avec un joli titre pour la fenêtre de visualisation
@@ -403,8 +413,8 @@ int main (int argc, char** argv)
 	// Définition de la couleur du fond
 	viewer->setBackgroundColor(0.4, 0, 0.6);
 	// Ajout des point du cloud au viewer, avec un ID string qui peut être utilisé pour identifier le cloud
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb1(cloud_S);
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(cloud_M);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> rgb1(cloud_S, 255, 0, 0);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> rgb2(cloud_M, 0, 255, 0);
 	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_S, rgb1, "sample cloud1"); 
 	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_M, rgb2, "sample cloud2"); 
 	

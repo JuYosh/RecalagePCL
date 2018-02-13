@@ -114,6 +114,8 @@ void calculParametre( double vecteurs [][3] , int k , double** tabNormal , doubl
 	
 	double tmpSum = d[0]+d[1]+d[2];
 	double tmpMin = std::min( d[0] , d[1] );
+
+	tmpMin = std::min( tmpMin , d[2] );
 	
 	//on cherche le vecteur propre correspondant
 	if( tmpMin == d[0] )
@@ -135,7 +137,7 @@ void calculParametre( double vecteurs [][3] , int k , double** tabNormal , doubl
 		normalePoint[2] = v[8];
 	}
 	
-	tmpMin = std::min( tmpMin , d[2] );
+	
 	/*cout << "somme des valeurs propres = " << tmpSum << "\n";
 	cout << "plus petitte valeur propre = " << tmpMin << "\n";*/
 	//on a donc ici nos valeurs/vecteurs propres

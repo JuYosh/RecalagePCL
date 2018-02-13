@@ -34,9 +34,9 @@ double calculerAngle( double A[3] , double B[3] )
 
 void produitMatVect( double res [3] , double M [3][3] , double V[3] )
 {
-	res[0] = dot( M[0] , V );
-	res[1] = dot( M[1] , V );
-	res[2] = dot( M[2] , V );
+	res[0] = M[0][0] * V[0] + M[0][1] * V[1] + M[0][2] * V[2];
+	res[1] = M[1][0] * V[0] + M[1][1] * V[1] + M[1][2] * V[2];
+	res[2] = M[2][0] * V[0] + M[2][1] * V[1] + M[2][2] * V[2];
 }
 
 void R( double res[3] , double v [3] , double angle , double axe [3] , double rot[3][3] )
@@ -86,9 +86,9 @@ void normalize( double A [3] )
 	A[2] = A[2] / normeA;
 }
 //calcul de la transformation (rotation et translation) pour passer de A à B
-//On calcule la tranlation apr rapport aux coordonées des points et la rotation par rapport a leurs normales
+//On calcule la tranlation1 pour mettre le point de s à l'origine on calcule la rotation pour aligner les normales des deux points puis on refait une translation pour que les points de S et M coincident
 //les resultats sont ecrits dans rotation et dans translation
-void calculTransformation( double A [3] , double B [3] , double normaleA [3] , double normaleB [3] , double rotation [3][3], double translation [3] )
+void calculTransformation( double A [3] , double B [3] , double normaleA [3] , double normaleB [3] , double rotation [3][3], double translation1 [3], double translation2 [3] )
 {
 	double tmpAngle , angle;//angleX , angleY , angleZ;
 	double tmpA [3];
@@ -98,9 +98,13 @@ void calculTransformation( double A [3] , double B [3] , double normaleA [3] , d
 	//A[0] = A[1] = A[2] = 1.0; 
 	//B[0] = B[1] = B[2] = -1.0; 
 	//calcul de la translation, on translate de A en B donc on applique le vecteur AB = B-A
-	translation[0] = B[0] - A[0];
-	translation[1] = B[1] - A[1];
-	translation[2] = B[2] - A[2];
+	translation1[0] =  - A[0];
+	translation1[1] =  - A[1];
+	translation1[2] =  - A[2];
+
+	translation2[0] =  B[0];
+	translation2[1] =  B[1];
+	translation2[2] =  B[2];
 	
 	//calcul de la rotation
 	//on va calculer l'angle entre A et B
